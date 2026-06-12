@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order & Cash</title>
+<style>
+  /* ===== General Reset & Base ===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+  body { background: #f0f2f5; color: #333; min-height: 100vh; }
+
+  /* ===== Frame (Screen) Container ===== */
+  .frame {
+    display: none; /* كل الشاشات مخفية بشكل افتراضي */
+    min-height: 100vh;
+    width: 100%;
+    flex-direction: column;
+    padding: 20px;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  .frame.active { display: flex; } /* الشاشة النشطة فقط تظهر */
+
+  @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+
+  /* ===== Card / Container ===== */
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  h1, h2 { text-align: center; margin-bottom: 16px; color: #1a73e8; }
+  p.subtitle { text-align: center; color: #777; margin-bottom: 20px; }
+
+  /* ===== Form Elements ===== */
+  label { display: block; margin: 10px 0 4px; font-weight: bold; }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* ===== Buttons ===== */
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: 0.2s;
+  }
+  button:hover { background: #1558b0; }
+  button.secondary { background: #6c757d; }
+  button.secondary:hover { background: #565e64; }
+  button.success { background: #28a745; }
+  button.success:hover { background: #1e7e34; }
+  button.danger { background: #dc3545; }
+  button.danger:hover { background: #b02a37; }
+  button.small { width: auto; padding: 8px 14px; font-size: 13px; margin: 4px 2px; }
+
+  /* ===== Grid for Role Selection ===== */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 480px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ===== Order List Items ===== */
+  .order-item {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .order-item .status {
+    font-size: 12px;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    width: fit-content;
+  }
+  .status.pending { background: #fff3cd; color: #997404; }
+  .status.delivered { background: #d1e7dd; color: #0f5132; }
+
+  .order-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ===== Top Bar ===== */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 480px;
+    margin: 0 auto 16px;
+    width: 100%;
+  }
+  .topbar h2 { margin: 0; }
+  .topbar button { width: auto; padding: 8px 14px; margin: 0; }
+
+  /* ===== Cash Total Box ===== */
+  .cash-box {
+    background: linear-gradient(135deg, #1a73e8, #6db4ff);
+    color: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .cash-box .amount { font-size: 32px; font-weight: bold; margin-top: 6px; }
+
+  /* ===== Modal (Success Popup) ===== */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
+  .modal-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 30px;
+    text-align: center;
+    max-width: 320px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  }
+  .modal-box .icon { font-size: 48px; color: #28a745; margin-bottom: 10px; }
+  .modal-box h3 { color: #28a745; margin-bottom: 6px; }
+
+  /* ===== Error Message ===== */
+  .error-msg {
+    color: #dc3545;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 8px;
+    min-height: 18px;
+  }
+
+  /* ===== Encrypted Link Box ===== */
+  .link-box {
+    background: #f1f3f4;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    word-break: break-all;
+    margin-bottom: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+
+  .empty-msg { text-align: center; color: #999; padding: 20px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     شاشة 1: شاشة التفعيل (Login Screen) - الشاشة الوحيدة الظاهرة عند التحميل
+     ============================================================ -->
+<div id="screen-login" class="frame active">
+  <div class="card">
+    <h1>Order &amp; Cash</h1>
+    <p class="subtitle">يرجى إدخال كود التفعيل وكود المتجر للبدء</p>
+
+    <label for="activationCode">كود التفعيل (Activation Code)</label>
+    <input type="text" id="activationCode" placeholder="مثال: URDO-2026">
+
+    <label for="storeCode">كود المتجر (Store Code)</label>
+    <input type="text" id="storeCode" placeholder="مثال: STORE-001">
+
+    <button id="btnActivate">تفعيل الحساب</button>
+    <div class="error-msg" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 2: اختيار الدور (مدير / مندوب)
+     ============================================================ -->
+<div id="screen-role" class="frame">
+  <div class="card">
+    <h2>اختر الدور</h2>
+    <p class="subtitle">حدد طبيعة استخدامك للنظام</p>
+
+    <div class="grid-2">
+      <button id="btnRoleManager">👨‍💼 مدير</button>
+      <button id="btnRoleDriver">🚗 مندوب</button>
+    </div>
+
+    <button class="secondary" id="btnLogoutFromRole">تسجيل خروج / تغيير الكود</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 3: الشاشة الرئيسية للمدير (Manager Dashboard)
+     ============================================================ -->
+<div id="screen-manager-home" class="frame">
+  <div class="topbar">
+    <h2>لوحة المدير</h2>
+    <button class="danger small" id="btnLogoutManager">خروج</button>
+  </div>
+
+  <div class="card">
+    <div class="cash-box">
+      <div>إجمالي الكاش المُحصّل</div>
+      <div class="amount" id="totalCashDisplay">0.00</div>
+    </div>
+
+    <button id="btnGoAddOrder">➕ إضافة طلب جديد</button>
+    <button class="secondary" id="btnGoOrdersList">📋 عرض كل الطلبات</button>
+    <button class="secondary" id="btnGoSendOrder">📤 إرسال طلب للمندوب</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 4: إضافة طلب جديد (Add Order)
+     ============================================================ -->
+<div id="screen-add-order" class="frame">
+  <div class="topbar">
+    <h2>إضافة طلب</h2>
+    <button class="secondary small" id="btnBackFromAddOrder">رجوع</button>
+  </div>
+
+  <div class="card">
+    <label for="customerName">اسم العميل</label>
+    <input type="text" id="customerName" placeholder="اسم العميل">
+
+    <label for="customerPhone">رقم الهاتف</label>
+    <input type="text" id="customerPhone" placeholder="01xxxxxxxxx">
+
+    <label for="customerAddress">العنوان</label>
+    <textarea id="customerAddress" placeholder="العنوان بالتفصيل"></textarea>
+
+    <label for="orderItems">تفاصيل الطلب (المنتجات)</label>
+    <textarea id="orderItems" placeholder="مثال: 2x قميص، 1x بنطلون"></textarea>
+
+    <label for="orderAmount">المبلغ الإجمالي (جنيه)</label>
+    <input type="number" id="orderAmount" placeholder="0.00" step="0.01">
+
+    <button class="success" id="btnSaveOrder">💾 حفظ الطلب</button>
+    <div class="error-msg" id="addOrderError"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 5: عرض كل الطلبات (Orders List - للمدير)
+     ============================================================ -->
+<div id="screen-orders-list" class="frame">
+  <div class="topbar">
+    <h2>كل الطلبات</h2>
+    <button class="secondary small" id="btnBackFromOrdersList">رجوع</button>
+  </div>
+
+  <div class="card">
+    <div id="ordersListContainer">
+      <!-- يتم تعبئة الطلبات هنا ديناميكياً عبر JS -->
+      <p class="empty-msg">لا توجد طلبات بعد</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 6: إرسال طلب للمندوب (توليد رابط واتساب مشفر)
+     ============================================================ -->
+<div id="screen-send-order" class="frame">
+  <div class="topbar">
+    <h2>إرسال طلب للمندوب</h2>
+    <button class="secondary small" id="btnBackFromSendOrder">رجوع</button>
+  </div>
+
+  <div class="card">
+    <label for="selectOrderToSend">اختر الطلب</label>
+    <select id="selectOrderToSend">
+      <option value="">-- اختر طلباً --</option>
+    </select>
+
+    <label for="driverWhatsapp">رقم واتساب المندوب (اختياري)</label>
+    <input type="text" id="driverWhatsapp" placeholder="20xxxxxxxxxx">
+
+    <button id="btnGenerateLink">🔗 توليد رابط واتساب</button>
+
+    <div id="generatedLinkSection" style="display:none; margin-top:14px;">
+      <label>الرابط المشفر (Encrypted Code)</label>
+      <div class="link-box" id="encryptedOutput"></div>
+      <button class="success" id="btnOpenWhatsapp">📲 فتح واتساب</button>
+    </div>
+
+    <div class="error-msg" id="sendOrderError"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 7: الشاشة الرئيسية للمندوب (Driver Dashboard)
+     ============================================================ -->
+<div id="screen-driver-home" class="frame">
+  <div class="topbar">
+    <h2>لوحة المندوب</h2>
+    <button class="danger small" id="btnLogoutDriver">خروج</button>
+  </div>
+
+  <div class="card">
+    <label for="encryptedInput">الصق الرابط / الكود المشفر هنا</label>
+    <textarea id="encryptedInput" placeholder="الصق الكود المشفر الذي استلمته من المدير"></textarea>
+    <button id="btnDecodeOrder">📥 استقبال الطلب</button>
+    <div class="error-msg" id="driverError"></div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <h2 style="font-size:18px;">طلباتي</h2>
+    <div id="driverOrdersContainer">
+      <p class="empty-msg">لا توجد طلبات مستقبلة بعد</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 8: تفاصيل طلب المندوب (Driver Order Detail)
+     ============================================================ -->
+<div id="screen-driver-order-detail" class="frame">
+  <div class="topbar">
+    <h2>تفاصيل الطلب</h2>
+    <button class="secondary small" id="btnBackFromDriverDetail">رجوع</button>
+  </div>
+
+  <div class="card">
+    <p><strong>اسم العميل:</strong> <span id="detailCustomerName"></span></p>
+    <p><strong>الهاتف:</strong> <span id="detailCustomerPhone"></span></p>
+    <p><strong>العنوان:</strong> <span id="detailCustomerAddress"></span></p>
+    <p><strong>تفاصيل الطلب:</strong> <span id="detailOrderItems"></span></p>
+    <p><strong>المبلغ:</strong> <span id="detailOrderAmount"></span> جنيه</p>
+    <p><strong>الحالة:</strong> <span id="detailOrderStatus"></span></p>
+
+    <button class="success" id="btnMarkDelivered">✅ تم التسليم</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     شاشة 9: شاشة الخطأ / الكود غير صحيح (Error / Invalid Code Screen)
+     ============================================================ -->
+<div id="screen-error" class="frame">
+  <div class="card">
+    <h2>⚠️ خطأ</h2>
+    <p class="subtitle" id="generalErrorMessage">حدث خطأ ما، يرجى المحاولة مرة أخرى.</p>
+    <button class="secondary" id="btnBackToLoginFromError">العودة لشاشة التفعيل</button>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     Modal: نافذة تأكيد الحفظ (Success Popup) - تظهر فوق كل الشاشات
+     ============================================================ -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal-box">
+    <div class="icon">✔️</div>
+    <h3>تم الحفظ بنجاح</h3>
+    <p>تمت إضافة الطلب إلى القائمة.</p>
+  </div>
+</div>
+
+
+<script>
+/* ============================================================
+   ===================  متغيرات عامة (Global State)  ==========
+   ============================================================ */
+
+// الكود الثابت المطلوب للتفعيل
+const ACTIVATION_CODE = "URDO-2026";
+
+// متغير يحمل كود المتجر الحالي (يحدد عزل البيانات لكل مستخدم)
+let currentStoreCode = null;
+
+// متغير يحمل الدور الحالي (manager / driver)
+let currentRole = null;
+
+// متغير مؤقت لتخزين رقم الطلب المختار في شاشة المندوب لعرضه بالتفاصيل
+let selectedDriverOrderIndex = null;
+
+
+/* ============================================================
+   ===================  دوال مساعدة عامة (Helpers)  ============
+   ============================================================ */
+
+/**
+ * إخفاء جميع الشاشات وعرض شاشة واحدة فقط بالـ ID المحدد
+ * @param {string} screenId - الـ ID الخاص بالشاشة المطلوب عرضها
+ */
+function showScreen(screenId) {
+  // الحصول على كل العناصر التي تحمل كلاس "frame"
+  const allFrames = document.querySelectorAll('.frame');
+  allFrames.forEach(frame => frame.classList.remove('active'));
+
+  // عرض الشاشة المطلوبة فقط
+  const target = document.getElementById(screenId);
+  if (target) target.classList.add('active');
+}
+
+/**
+ * توليد مفتاح التخزين الخاص بالطلبات بناءً على كود المتجر الحالي
+ * هذا يضمن عزل البيانات: كل متجر له مفتاح مختلف في LocalStorage
+ * @returns {string} مفتاح LocalStorage للطلبات
+ */
+function getOrdersKey() {
+  // مثال: "Orders_STORE-001"
+  return "Orders_" + currentStoreCode;
+}
+
+/**
+ * قراءة كل الطلبات الخاصة بالمتجر الحالي من LocalStorage
+ * @returns {Array} مصفوفة الطلبات (أو مصفوفة فارغة إذا لم توجد)
+ */
+function getOrders() {
+  const data = localStorage.getItem(getOrdersKey());
+  return data ? JSON.parse(data) : [];
+}
+
+/**
+ * حفظ مصفوفة الطلبات في LocalStorage الخاصة بالمتجر الحالي
+ * @param {Array} orders - مصفوفة الطلبات المراد حفظها
+ */
+function saveOrders(orders) {
+  localStorage.setItem(getOrdersKey(), JSON.stringify(orders));
+}
+
+/**
+ * عرض نافذة تأكيد النجاح (Success Modal) وإخفاؤها تلقائياً بعد ثانيتين
+ */
+function showSuccessModal() {
+  const modal = document.getElementById('successModal');
+  modal.classList.add('show');
+  setTimeout(() => {
+    modal.classList.remove('show');
+  }, 2000); // يختفي بعد 2 ثانية
+}
+
+/**
+ * دالة التحقق من صحة البيانات (Validation)
+ * تتأكد أن كل القيم المُمررة غير فارغة (بعد إزالة الفراغات الزائدة)
+ * @param {Array<string>} values - مصفوفة من القيم النصية للتحقق منها
+ * @returns {boolean} true إذا كانت كل القيم صحيحة (غير فارغة)
+ */
+function validateNotEmpty(values) {
+  for (let val of values) {
+    if (val === null || val === undefined || val.toString().trim() === "") {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * تحديث إجمالي الكاش المعروض في شاشة المدير
+ * يتم حساب الإجمالي من كل الطلبات التي حالتها "تم التسليم"
+ */
+function updateTotalCash() {
+  const orders = getOrders();
+  let total = 0;
+  orders.forEach(order => {
+    if (order.status === "delivered") {
+      total += parseFloat(order.amount) || 0;
+    }
+  });
+  const display = document.getElementById('totalCashDisplay');
+  if (display) display.textContent = total.toFixed(2);
+}
+
+
+/* ============================================================
+   ===================  دوال شاشة التفعيل (Login)  =============
+   ============================================================ */
+
+/**
+ * التحقق من بيانات التفعيل والانتقال لشاشة اختيار الدور
+ */
+function handleActivation() {
+  const codeInput = document.getElementById('activationCode').value.trim();
+  const storeInput = document.getElementById('storeCode').value.trim();
+  const errorBox = document.getElementById('loginError');
+
+  // التحقق من أن الحقول ليست فارغة
+  if (!validateNotEmpty([codeInput, storeInput])) {
+    errorBox.textContent = "يرجى تعبئة جميع الحقول.";
+    return;
+  }
+
+  // التحقق من صحة كود التفعيل
+  if (codeInput !== ACTIVATION_CODE) {
+    errorBox.textContent = "كود التفعيل غير صحيح.";
+    return;
+  }
+
+  // كل شيء صحيح: تخزين الحالة في LocalStorage
+  currentStoreCode = storeInput;
+  localStorage.setItem('activationCode', codeInput);
+  localStorage.setItem('storeCode', storeInput);
+
+  errorBox.textContent = "";
+  showScreen('screen-role');
+}
+
+
+/* ============================================================
+   ===================  دوال اختيار الدور (Role)  ===============
+   ============================================================ */
+
+/**
+ * اختيار دور "مدير" والانتقال للوحة المدير
+ */
+function handleRoleManager() {
+  currentRole = "manager";
+  localStorage.setItem('userRole', 'manager');
+  updateTotalCash();
+  showScreen('screen-manager-home');
+}
+
+/**
+ * اختيار دور "مندوب" والانتقال للوحة المندوب
+ */
+function handleRoleDriver() {
+  currentRole = "driver";
+  localStorage.setItem('userRole', 'driver');
+  renderDriverOrders();
+  showScreen('screen-driver-home');
+}
+
+/**
+ * تسجيل خروج كامل: مسح حالة الجلسة الحالية والعودة لشاشة التفعيل
+ * (لا يتم مسح بيانات الطلبات نفسها، فقط حالة الجلسة)
+ */
+function handleFullLogout() {
+  currentStoreCode = null;
+  currentRole = null;
+  localStorage.removeItem('activationCode');
+  localStorage.removeItem('storeCode');
+  localStorage.removeItem('userRole');
+
+  // تفريغ حقول شاشة الدخول
+  document.getElementById('activationCode').value = "";
+  document.getElementById('storeCode').value = "";
+  document.getElementById('loginError').textContent = "";
+
+  showScreen('screen-login');
+}
+
+
+/* ============================================================
+   ===================  دوال إضافة الطلب (Add Order)  ===========
+   ============================================================ */
+
+/**
+ * حفظ طلب جديد في LocalStorage بعد التحقق من صحة البيانات
+ */
+function handleSaveOrder() {
+  const nameEl = document.getElementById('customerName');
+  const phoneEl = document.getElementById('customerPhone');
+  const addressEl = document.getElementById('customerAddress');
+  const itemsEl = document.getElementById('orderItems');
+  const amountEl = document.getElementById('orderAmount');
+  const errorBox = document.getElementById('addOrderError');
+
+  const name = nameEl.value.trim();
+  const phone = phoneEl.value.trim();
+  const address = addressEl.value.trim();
+  const items = itemsEl.value.trim();
+  const amount = amountEl.value.trim();
+
+  // (أ) التحقق من أن كل الحقول معبأة قبل الحفظ
+  if (!validateNotEmpty([name, phone, address, items, amount])) {
+    errorBox.textContent = "يرجى تعبئة جميع الحقول قبل الحفظ.";
+    return;
+  }
+
+  // التحقق من أن المبلغ رقم صحيح وأكبر من صفر
+  if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    errorBox.textContent = "يرجى إدخال مبلغ صحيح أكبر من صفر.";
+    return;
+  }
+
+  errorBox.textContent = "";
+
+  // (ب) قراءة الطلبات الحالية وإضافة الطلب الجديد
+  const orders = getOrders();
+  const newOrder = {
+    id: Date.now(), // معرف فريد بناءً على الوقت
+    name: name,
+    phone: phone,
+    address: address,
+    items: items,
+    amount: parseFloat(amount),
+    status: "pending" // الحالة الافتراضية: قيد الانتظار
+  };
+  orders.push(newOrder);
+  saveOrders(orders);
+
+  // (ج) إظهار نافذة التأكيد لمدة ثانيتين
+  showSuccessModal();
+
+  // (د) تفريغ الحقول فوراً بعد الحفظ
+  nameEl.value = "";
+  phoneEl.value = "";
+  addressEl.value = "";
+  itemsEl.value = "";
+  amountEl.value = "";
+
+  // تحديث إجمالي الكاش (في حال وجود تغييرات)
+  updateTotalCash();
+}
+
+
+/* ============================================================
+   ===================  دوال عرض الطلبات (Orders List)  =========
+   ============================================================ */
+
+/**
+ * عرض كل الطلبات الخاصة بالمتجر الحالي في شاشة "كل الطلبات"
+ */
+function renderOrdersList() {
+  const container = document.getElementById('ordersListContainer');
+  const orders = getOrders();
+
+  if (orders.length === 0) {
+    container.innerHTML = '<p class="empty-msg">لا توجد طلبات بعد</p>';
+    return;
+  }
+
+  // بناء قائمة HTML للطلبات
+  let html = "";
+  orders.forEach((order, index) => {
+    const statusClass = order.status === "delivered" ? "delivered" : "pending";
+    const statusText = order.status === "delivered" ? "تم التسليم" : "قيد الانتظار";
+
+    html += `
+      <div class="order-item">
+        <strong>${escapeHtml(order.name)}</strong>
+        <span>📞 ${escapeHtml(order.phone)}</span>
+        <span>📍 ${escapeHtml(order.address)}</span>
+        <span>🛒 ${escapeHtml(order.items)}</span>
+        <span>💰 ${order.amount.toFixed(2)} جنيه</span>
+        <span class="status ${statusClass}">${statusText}</span>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+/**
+ * دالة بسيطة لتنظيف النصوص من الأكواد الضارة قبل إدراجها في HTML
+ * @param {string} text - النص المراد تنظيفه
+ * @returns {string} نص آمن للعرض
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+
+/* ============================================================
+   ===================  دوال إرسال الطلب (Send Order)  ===========
+   ============================================================ */
+
+/**
+ * تعبئة قائمة اختيار الطلب (Select) بكل الطلبات قيد الانتظار
+ */
+function populateOrdersSelect() {
+  const select = document.getElementById('selectOrderToSend');
+  const orders = getOrders();
+
+  // تفريغ القائمة (مع الاحتفاظ بالخيار الأول)
+  select.innerHTML = '<option value="">-- اختر طلباً --</option>';
+
+  orders.forEach((order, index) => {
+    // عرض فقط الطلبات التي لم تُسلَّم بعد
+    if (order.status !== "delivered") {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `#${index + 1} - ${order.name} - ${order.amount.toFixed(2)} جنيه`;
+      select.appendChild(option);
+    }
+  });
+
+  // إعادة إخفاء قسم الرابط المُولّد
+  document.getElementById('generatedLinkSection').style.display = 'none';
+  document.getElementById('sendOrderError').textContent = '';
+}
+
+/**
+ * (أ) قراءة بيانات الطلب المختار
+ * (ب) تشفير البيانات باستخدام btoa
+ * (ج) عرض الرابط المشفر وتجهيزه لفتح واتساب
+ */
+function handleGenerateLink() {
+  const select = document.getElementById('selectOrderToSend');
+  const errorBox = document.getElementById('sendOrderError');
+  const index = select.value;
+
+  // التحقق من اختيار طلب
+  if (index === "") {
+    errorBox.textContent = "يرجى اختيار طلب أولاً.";
+    return;
+  }
+
+  errorBox.textContent = "";
+
+  const orders = getOrders();
+  const order = orders[parseInt(index)];
+
+  // (أ) تجميع بيانات الطلب في كائن (Object) يشمل كود المتجر للحفاظ على العزل
+  const orderData = {
+    storeCode: currentStoreCode,
+    orderId: order.id,
+    name: order.name,
+    phone: order.phone,
+    address: order.address,
+    items: order.items,
+    amount: order.amount,
+    status: order.status
+  };
+
+  // (ب) تشفير البيانات باستخدام btoa (Base64 Encoding)
+  // نستخدم encodeURIComponent أولاً لدعم الأحرف العربية بشكل صحيح
+  const jsonString = JSON.stringify(orderData);
+  const encoded = btoa(encodeURIComponent(jsonString));
+
+  // عرض الكود المشفر للمستخدم
+  document.getElementById('encryptedOutput').textContent = encoded;
+  document.getElementById('generatedLinkSection').style.display = 'block';
+
+  // تخزين الكود المشفر مؤقتاً لاستخدامه عند فتح واتساب
+  document.getElementById('generatedLinkSection').dataset.encoded = encoded;
+}
+
+/**
+ * (ج) فتح رابط واتساب (https://wa.me/) مع تمرير الرابط المشفر كنص رسالة
+ */
+function handleOpenWhatsapp() {
+  const encoded = document.getElementById('generatedLinkSection').dataset.encoded;
+  const phone = document.getElementById('driverWhatsapp').value.trim();
+
+  if (!encoded) return;
+
+  // بناء رسالة تحتوي على الكود المشفر
+  const message = "طلب جديد - كود مشفر:\n" + encoded;
+  const encodedMessage = encodeURIComponent(message);
+
+  // إذا تم إدخال رقم هاتف نستخدمه، وإلا نفتح واتساب بدون رقم محدد
+  let url;
+  if (phone) {
+    url = `https://wa.me/${phone}?text=${encodedMessage}`;
+  } else {
+    url = `https://wa.me/?text=${encodedMessage}`;
+  }
+
+  // فتح الرابط في نافذة جديدة
+  window.open(url, '_blank');
+}
+
+
+/* ============================================================
+   ===================  دوال شاشة المندوب (Driver)  ==============
+   ============================================================ */
+
+/**
+ * عرض كل الطلبات التي استلمها المندوب (مخزنة بنفس مصفوفة المتجر الحالي)
+ * نعرض فقط الطلبات التي وصلت عبر الكود المشفر (لها علامة receivedByDriver)
+ */
+function renderDriverOrders() {
+  const container = document.getElementById('driverOrdersContainer');
+  const orders = getOrders();
+
+  // تصفية الطلبات التي استلمها المندوب فقط
+  const driverOrders = orders.filter(o => o.receivedByDriver === true);
+
+  if (driverOrders.length === 0) {
+    container.innerHTML = '<p class="empty-msg">لا توجد طلبات مستقبلة بعد</p>';
+    return;
+  }
+
+  let html = "";
+  driverOrders.forEach((order) => {
+    // نحتاج إلى الفهرس الحقيقي في المصفوفة الأصلية للتعديل عليه لاحقاً
+    const realIndex = orders.indexOf(order);
+    const statusClass = order.status === "delivered" ? "delivered" : "pending";
+    const statusText = order.status === "delivered" ? "تم التسليم" : "قيد الانتظار";
+
+    html += `
+      <div class="order-item">
+        <strong>${escapeHtml(order.name)}</strong>
+        <span>💰 ${order.amount.toFixed(2)} جنيه</span>
+        <span class="status ${statusClass}">${statusText}</span>
+        <div class="order-actions">
+          <button class="small" onclick="openDriverOrderDetail(${realIndex})">عرض التفاصيل</button>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+/**
+ * فك تشفير الرابط/الكود الذي يلصقه المندوب وإضافة الطلب لقائمته
+ */
+function handleDecodeOrder() {
+  const input = document.getElementById('encryptedInput');
+  const errorBox = document.getElementById('driverError');
+  const encodedValue = input.value.trim();
+
+  if (encodedValue === "") {
+    errorBox.textContent = "يرجى لصق الكود المشفر أولاً.";
+    return;
+  }
+
+  try {
+    // فك التشفير باستخدام atob ثم decodeURIComponent لدعم العربية
+    const decodedJson = decodeURIComponent(atob(encodedValue));
+    const orderData = JSON.parse(decodedJson);
+
+    // ===== فحص العزل: التأكد أن الطلب يخص نفس كود المتجر الحالي =====
+    if (orderData.storeCode !== currentStoreCode) {
+      errorBox.textContent = "هذا الطلب لا يخص كود متجرك الحالي.";
+      return;
+    }
+
+    errorBox.textContent = "";
+
+    // إضافة الطلب إلى مصفوفة الطلبات الخاصة بهذا المتجر (إن لم يكن موجوداً)
+    let orders = getOrders();
+
+    // البحث عن الطلب بنفس orderId لتجنب التكرار
+    let existing = orders.find(o => o.id === orderData.orderId);
+
+    if (existing) {
+      // إذا كان موجوداً، فقط نعلّمه كأنه مستلم من المندوب
+      existing.receivedByDriver = true;
+    } else {
+      // إضافة الطلب كعنصر جديد في المصفوفة مع وضع علامة الاستلام
+      orders.push({
+        id: orderData.orderId,
+        name: orderData.name,
+        phone: orderData.phone,
+        address: orderData.address,
+        items: orderData.items,
+        amount: orderData.amount,
+        status: orderData.status || "pending",
+        receivedByDriver: true
+      });
+    }
+
+    saveOrders(orders);
+
+    // تفريغ حقل اللصق وتحديث القائمة
+    input.value = "";
+    renderDriverOrders();
+
+  } catch (e) {
+    // في حال فشل فك التشفير (كود غير صحيح)
+    errorBox.textContent = "الكود المشفر غير صالح أو تالف.";
+  }
+}
+
+/**
+ * فتح شاشة تفاصيل الطلب الخاص بالمندوب
+ * @param {number} index - فهرس الطلب داخل مصفوفة الطلبات
+ */
+function openDriverOrderDetail(index) {
+  selectedDriverOrderIndex = index;
+  const orders = getOrders();
+  const order = orders[index];
+
+  document.getElementById('detailCustomerName').textContent = order.name;
+  document.getElementById('detailCustomerPhone').textContent = order.phone;
+  document.getElementById('detailCustomerAddress').textContent = order.address;
+  document.getElementById('detailOrderItems').textContent = order.items;
+  document.getElementById('detailOrderAmount').textContent = order.amount.toFixed(2);
+  document.getElementById('detailOrderStatus').textContent =
+    order.status === "delivered" ? "تم التسليم" : "قيد الانتظار";
+
+  // تعطيل الزر إذا كان الطلب مُسلّماً بالفعل
+  const deliverBtn = document.getElementById('btnMarkDelivered');
+  if (order.status === "delivered") {
+    deliverBtn.disabled = true;
+    deliverBtn.textContent = "✅ تم التسليم مسبقاً";
+  } else {
+    deliverBtn.disabled = false;
+    deliverBtn.textContent = "✅ تم التسليم";
+  }
+
+  showScreen('screen-driver-order-detail');
+}
+
+/**
+ * تحديث حالة الطلب إلى "تم التسليم" وتحديث إجمالي الكاش للمدير
+ */
+function handleMarkDelivered() {
+  if (selectedDriverOrderIndex === null) return;
+
+  const orders = getOrders();
+  const order = orders[selectedDriverOrderIndex];
+
+  // تحديث حالة الطلب في المصفوفة
+  order.status = "delivered";
+  saveOrders(orders);
+
+  // تحديث الإجمالي (سيظهر تلقائياً عند دخول المدير للوحته)
+  updateTotalCash();
+
+  // إظهار رسالة تأكيد
+  showSuccessModal();
+
+  // الرجوع لقائمة طلبات المندوب وتحديثها
+  renderDriverOrders();
+  showScreen('screen-driver-home');
+}
+
+
+/* ============================================================
+   ===================  استعادة الجلسة عند التحميل  =============
+   ============================================================ */
+
+/**
+ * عند تحميل الصفحة، نتحقق من LocalStorage لمعرفة إذا كان المستخدم
+ * قد سجل دخوله مسبقاً، وفي هذه الحالة ننتقل مباشرة للشاشة المناسبة
+ */
+function restoreSession() {
+  const savedCode = localStorage.getItem('activationCode');
+  const savedStore = localStorage.getItem('storeCode');
+  const savedRole = localStorage.getItem('userRole');
+
+  if (savedCode === ACTIVATION_CODE && savedStore) {
+    currentStoreCode = savedStore;
+
+    if (savedRole === "manager") {
+      currentRole = "manager";
+      updateTotalCash();
+      showScreen('screen-manager-home');
+    } else if (savedRole === "driver") {
+      currentRole = "driver";
+      renderDriverOrders();
+      showScreen('screen-driver-home');
+    } else {
+      // تم التفعيل لكن لم يُحدد الدور بعد
+      showScreen('screen-role');
+    }
+  } else {
+    // لا توجد جلسة محفوظة: عرض شاشة التفعيل
+    showScreen('screen-login');
+  }
+}
+
+
+/* ============================================================
+   ===================  ربط الأحداث (Event Listeners)  ===========
+   ============================================================ */
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* ---------- شاشة التفعيل ---------- */
+  document.getElementById('btnActivate').addEventListener('click', handleActivation);
+
+  /* ---------- شاشة اختيار الدور ---------- */
+  document.getElementById('btnRoleManager').addEventListener('click', handleRoleManager);
+  document.getElementById('btnRoleDriver').addEventListener('click', handleRoleDriver);
+  document.getElementById('btnLogoutFromRole').addEventListener('click', handleFullLogout);
+
+  /* ---------- لوحة المدير ---------- */
+  document.getElementById('btnLogoutManager').addEventListener('click', handleFullLogout);
+
+  document.getElementById('btnGoAddOrder').addEventListener('click', function () {
+    document.getElementById('addOrderError').textContent = '';
+    showScreen('screen-add-order');
+  });
+
+  document.getElementById('btnGoOrdersList').addEventListener('click', function () {
+    renderOrdersList();
+    showScreen('screen-orders-list');
+  });
+
+  document.getElementById('btnGoSendOrder').addEventListener('click', function () {
+    populateOrdersSelect();
+    showScreen('screen-send-order');
+  });
+
+  /* ---------- شاشة إضافة طلب ---------- */
+  document.getElementById('btnSaveOrder').addEventListener('click', handleSaveOrder);
+
+  document.getElementById('btnBackFromAddOrder').addEventListener('click', function () {
+    updateTotalCash();
+    showScreen('screen-manager-home');
+  });
+
+  /* ---------- شاشة عرض كل الطلبات ---------- */
+  document.getElementById('btnBackFromOrdersList').addEventListener('click', function () {
+    updateTotalCash();
+    showScreen('screen-manager-home');
+  });
+
+  /* ---------- شاشة إرسال الطلب ---------- */
+  document.getElementById('btnGenerateLink').addEventListener('click', handleGenerateLink);
+  document.getElementById('btnOpenWhatsapp').addEventListener('click', handleOpenWhatsapp);
+
+  document.getElementById('btnBackFromSendOrder').addEventListener('click', function () {
+    showScreen('screen-manager-home');
+  });
+
+  /* ---------- لوحة المندوب ---------- */
+  document.getElementById('btnLogoutDriver').addEventListener('click', handleFullLogout);
+  document.getElementById('btnDecodeOrder').addEventListener('click', handleDecodeOrder);
+
+  /* ---------- شاشة تفاصيل طلب المندوب ---------- */
+  document.getElementById('btnMarkDelivered').addEventListener('click', handleMarkDelivered);
+
+  document.getElementById('btnBackFromDriverDetail').addEventListener('click', function () {
+    selectedDriverOrderIndex = null;
+    showScreen('screen-driver-home');
+  });
+
+  /* ---------- شاشة الخطأ العام ---------- */
+  document.getElementById('btnBackToLoginFromError').addEventListener('click', function () {
+    showScreen('screen-login');
+  });
+
+  /* ---------- استعادة الجلسة عند بدء التشغيل ---------- */
+  restoreSession();
+
+});
+</script>
+
+</body>
+</html>
